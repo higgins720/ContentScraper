@@ -2,29 +2,32 @@ from bs4 import BeautifulSoup
 from tqdm import tqdm
 import requests
 import json
+import jsonreader
 
 ## Request information from user
-ask_site_name = input('Name of site: ')
-website_name = ask_site_name.lower().strip().replace(' ', '-')
-# website_address = input('Site URL')
+#ask_site_name = input('Name of site: ')
+#website_name = ask_site_name.lower().strip().replace(' ', '-')
+ask_site_address = input('Site URL: ')
+website = ask_site_address
 
-website = "https://www.mypestfriends.com/"
 dict_links = {website:'Not-checked'}
+
+headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
 
 def getdata(url):
     # add header to prevent being blocked (403 error) by wordpress websites
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'}
     r = requests.get(url, headers=headers)
     return r.text
 
-def get_links(website_url):
+
+
+def get_links(website_url, website):
     html_data = getdata(website_url)
     soup = BeautifulSoup(html_data, 'html.parser')
     list_links = []
 
     for link in soup.find_all('a', href=True):
-        link_status = link.status_code
         # If link starts with provided website url add to list     
         if str(link['href']).startswith(str(website_url)):
             list_links.append(link['href'])
@@ -33,7 +36,7 @@ def get_links(website_url):
             if link['href'] not in dict_href_links:
                 print(link['href'])
                 dict_href_links[link['href']] = None
-                link_with_www = website_url + link['href'][1:]
+                link_with_www = website + link['href'][1:]
                 print('adjusted link =', link_with_www)
                 list_links.append(link_with_www)
 
@@ -48,9 +51,9 @@ def get_subpage_links(l):
     for link in tqdm(l):
         if l[link] == 'Not-checked':
             # add url to dictionary
-            dict_links_subpages = get_links(link)
+            dict_links_subpages = get_links(link, website)
             # add status code to dictionary
-            l[link] = requests.get(link).status_code
+            l[link] = requests.get(link, headers=headers).status_code
         else:
             # Create empty dictionary in case every link is checked
             dict_links_subpages = {}
@@ -72,6 +75,11 @@ while counter != 0:
     print('')
     dict_links = dict_links2
     # Save list in json file
-    a_file = open(website_name + '-data.json', 'w')
+    a_file = open('ws-data.json', 'w')
     json.dump(dict_links, a_file)
     a_file.close()
+
+csv_question = input('Generate CSV? (y/n): ')
+
+if csv_question[0:1].lower() == 'y':
+    jsonreader.generate_csv()
